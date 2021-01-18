@@ -30,32 +30,41 @@ class ReciverOrderPageHome extends StatefulWidget {
   final id;
   final Map list;
   final String hselist;
+
   @override
   _ReciverOrderPageHomeState createState() => _ReciverOrderPageHomeState();
 }
 
 class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
     with WidgetsBindingObserver {
-  double CAMERA_ZOOM = 13;
+  Set<Polyline> lines = {};
+  double CAMERA_ZOOM = 15;
   double CAMERA_TILT = 80;
   double CAMERA_BEARING = 30;
   LatLng SOURCE_LOCATION = LatLng(33.5211342, 73.1044593);
   LatLng DEST_LOCATION = LatLng(33.5969, 73.0528);
   Completer<GoogleMapController> _controller = Completer();
   Set<Marker> _markers = Set<Marker>();
+
 // for my drawn routes on the map
-  Set<Polyline> _polylines = Set<Polyline>();
+  Map<PolylineId, Polyline> polylines = {};
   List<LatLng> polylineCoordinates = [];
-  PolylinePoints polylinePoints;
-  String googleAPIKey = Platform.isAndroid?'AIzaSyAawPM19Hr5XU6mCGME2GybZDj2-K3mc20':'AIzaSyAyoBh_jZM1FgjKqCFO4RZuRs2TWM9ronkS';
+  PolylinePoints polylinePoints = PolylinePoints();
+  String googleAPIKey = Platform.isAndroid
+      ? 'AIzaSyAawPM19Hr5XU6mCGME2GybZDj2-K3mc20'
+      : 'AIzaSyAyoBh_jZM1FgjKqCFO4RZuRs2TWM9ronk';
+
 // for my custom marker pins
   BitmapDescriptor sourceIcon;
   BitmapDescriptor destinationIcon;
+
 // the user's initial location and current location
 // as it moves
   LocationData currentLocation;
+
 // a reference to the destination location
   LocationData destinationLocation;
+
 // wrapper around the location API
   Location location;
   double pinPillPosition = -100;
@@ -72,8 +81,11 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
   bool onMap = false;
   bool onOnetime = false;
   int curentStatus = 1;
+  Timer timer;
+
   @override
   void initState() {
+    print('list is =${widget.list}');
     final BlockReciverOrderPageHome _provider =
         Provider.of<BlockReciverOrderPageHome>(context, listen: false);
     _gpsService();
@@ -83,15 +95,23 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
     // set custom marker pins
     setSourceAndDestinationIcons();
     // set the initial location
-    setInitialLocation(_provider);
-    getFoodDetail(_provider);
+    setInitialLocation(_provider).then((value) => {
+          getFoodDetail(_provider),
+          timer = Timer.periodic(Duration(seconds: 5), (timer) {
+            getlistofProgress(_provider);
+            if(_provider.timerstatus==false){
+              _provider.settimerstatus(true);
+            }
+          })
+        });
+
     WidgetsBinding.instance.addObserver(this);
     super.initState();
   }
 
   locationUpdate(BlockReciverOrderPageHome provider) async {
     if (provider.status == true) {
-      location.onLocationChanged().listen((LocationData cLoc) {
+      location.onLocationChanged.listen((LocationData cLoc) {
         currentLocation = cLoc;
         updatePinOnMap();
       });
@@ -135,43 +155,14 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
   }
 
   getlistofProgress(BlockReciverOrderPageHome provider) async {
-    if (onOnetime == false) {
-      Future.delayed(Duration(seconds: 00), () async {
-        if (mounted && provider.status == true) {
-          await ApiUtilsClass.updateOrderDetailPage(
-              provider, '${provider.listmain['order_id']}');
-        }
-      }).then((value) => {
-            if (mounted && provider.status == true)
-              {
-                setState(() {
-                  onOnetime = true;
-                }),
-                getlistofProgress(provider)
-              }
-          });
-    } else {
-      if (mounted && provider.status == true) {
-        Future.delayed(Duration(seconds: 10), () async {
-          if (mounted && provider.status == true) {
-            await ApiUtilsClass.updateOrderDetailPage(
-                provider, '${provider.listmain['order_id']}');
-            await ApiUtilsClass.reciverLocationUpdate(
-                currentLocation, '${provider.listmain['order_id']}');
-          }
-        }).then((value) => {
-              if (mounted && provider.status == true)
-                {getlistofProgress(provider)}
-            });
-      }
-    }
-  }
-
-  apiCalling() {
-    Future.delayed(Duration(seconds: 10), () async {
+    if (provider.ok == false) {
+      await ApiUtilsClass.updateOrderDetailPage(
+          provider, '${provider.listmain['order_id']}');
       await ApiUtilsClass.reciverLocationUpdate(
-          currentLocation, '${widget.id}');
-    }).then((value) => {apiCalling()});
+          currentLocation, '${provider.listmain['order_id']}');
+      locationUpdate(provider);
+    }
+
   }
 
   void setSourceAndDestinationIcons() async {
@@ -195,6 +186,7 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
   }
 
   Future setInitialLocation(BlockReciverOrderPageHome provider) async {
+
     currentLocation = await location.getLocation();
     if (provider.listmain != null) {
       DEST_LOCATION = LatLng(provider.listmain['food']['latitude'],
@@ -213,20 +205,20 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
   bool opacity = false;
 
   getFoodDetail(BlockReciverOrderPageHome provider) async {
-    if (widget.hselist == 'yes') {
-      provider.setListMain(widget.list);
-      await setInitialLocation(provider)
-          .then((value) => {getlistofProgress(provider)});
+    provider.setListMain(widget.list);
+    setInitialLocation(provider);
+    if (widget.hselist == 'no') {
+      await ApiUtilsClass.getOrderDetailPage(provider, '${widget.id}');
     } else {
-      await ApiUtilsClass.getOrderDetailPage(provider, '${widget.id}')
-          .then((value) async => {await setInitialLocation(provider)})
-          .then((value) => {getlistofProgress(provider)});
+      provider.setListMain(widget.list);
     }
   }
 
   Future onbackpress(BlockReciverOrderPageHome provider,
       Completer<GoogleMapController> controller) async {
-    provider.setstatus(false);
+    if(provider.timerstatus==true){
+      timer.cancel();
+    }
     getlistofProgress(provider);
     SharedPreferenceClass.addmode('R');
     Navigator.of(context).pop();
@@ -296,19 +288,61 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
         key: _provider.scaffoldKey,
         backgroundColor: Colors.white,
         body: _provider.loading == false
-            ? Center(
-                child: CircularProgressIndicator(),
+            ? Stack(
+                children: [
+                  Center(child: CupertinoActivityIndicator()),
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: Padding(
+                      padding:
+                          EdgeInsets.only(left: width / 20, top: width / 20),
+                      child: InkWell(
+                        onTap: () {
+                          onbackpress(_provider, _controller);
+                        },
+                        child: Icon(
+                          Platform.isAndroid
+                              ? Icons.arrow_back
+                              : Icons.arrow_back_ios,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                  )
+                ],
               )
             : _provider.ok == true
-                ? Center(
-                    child: Text(
-                      '${_provider.errorText}',
-                      style: TextStyle(
-                          color: AppThemes.balckOpacityThemes,
-                          fontFamily: 'Comfortaa',
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold),
-                    ),
+                ? Stack(
+                    children: [
+                      Center(
+                        child: Text(
+                          '${_provider.errorText}',
+                          style: TextStyle(
+                              color: AppThemes.balckOpacityThemes,
+                              fontFamily: 'Comfortaa',
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                              left: width / 20, top: width / 20),
+                          child: InkWell(
+                            onTap: () {
+                              onbackpress(_provider, _controller);
+                            },
+                            child: Icon(
+                              Platform.isAndroid
+                                  ? Icons.arrow_back
+                                  : Icons.arrow_back_ios,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      )
+                    ],
                   )
                 : Stack(
                     children: [
@@ -323,10 +357,12 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
                               child: AnimatedContainer(
                                 child: GoogleMap(
                                     myLocationEnabled: true,
+                                    tiltGesturesEnabled: true,
                                     compassEnabled: true,
-                                    tiltGesturesEnabled: false,
+                                    scrollGesturesEnabled: true,
+                                    zoomGesturesEnabled: true,
                                     markers: _markers,
-                                    polylines: _polylines,
+                                    polylines: lines,
                                     mapType: MapType.normal,
                                     initialCameraPosition: CameraPosition(
                                         target: LatLng(currentLocation.latitude,
@@ -749,14 +785,31 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
     ));
     // set the route lines on the map from source to destination
     // for more info follow this tutorial
-    setPolylines();
+    _getPolyline();
   }
 
-  void setPolylines() async {
+  _getPolyline(){
+    lines.add(
+      Polyline(
+        points: [
+          LatLng(currentLocation.latitude, currentLocation.longitude),
+          LatLng(destinationLocation.latitude, destinationLocation.longitude),
+        ],
+        endCap: Cap.squareCap,
+        geodesic: false,
+        color: Colors.blue,
+        polylineId: PolylineId("line_one"),
+      ),
+    );
+  }
+
+ /* void setPolylines() async {
     PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
       googleAPIKey,
       PointLatLng(currentLocation.latitude, currentLocation.longitude),
       PointLatLng(destinationLocation.latitude, destinationLocation.longitude),
+        travelMode: TravelMode.driving,
+        wayPoints: [PolylineWayPoint(location: "")]
     );
     if (result.points.isNotEmpty) {
       result.points.forEach((PointLatLng point) {
@@ -772,7 +825,13 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
       });
     }
   }
-
+  _addPolyLine() {
+    PolylineId id = PolylineId("poly");
+    Polyline polyline = Polyline(
+        polylineId: id, color: Colors.red, points: polylineCoordinates);
+    polylines[id] = polyline;
+    setState(() {});
+  }*/
   void updatePinOnMap() async {
     // create a new CameraPosition instance
     // every time the location changes, so the camera
@@ -808,7 +867,9 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
           position: pinPosition, // updated position
           icon: sourceIcon));
     });
+    _getPolyline();
   }
+
 }
 
 class Utils {

@@ -12,6 +12,13 @@ class BlockReciverOrderPageHome extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _timerstatus = false;
+  bool get timerstatus => _timerstatus;
+  settimerstatus(bool status) {
+    _timerstatus = status;
+    notifyListeners();
+  }
+
   var _listmain;
   get listmain => _listmain;
   setListMain(var list) {

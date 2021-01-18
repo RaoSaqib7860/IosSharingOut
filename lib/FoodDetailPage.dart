@@ -44,7 +44,7 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
   String startDate;
   String endDate;
 
-  double CAMERA_ZOOM = 10;
+  double CAMERA_ZOOM = 15;
   double CAMERA_TILT = 0;
   double CAMERA_BEARING = 30;
   LatLng SOURCE_LOCATION;

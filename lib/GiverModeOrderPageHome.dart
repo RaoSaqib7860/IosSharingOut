@@ -26,7 +26,8 @@ class GiverModeOrderPageHome extends StatefulWidget {
 }
 
 class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
-  double CAMERA_ZOOM = 10;
+  Set<Polyline> lines = {};
+  double CAMERA_ZOOM = 14;
   double CAMERA_TILT = 0;
   double CAMERA_BEARING = 30;
   LatLng SOURCE_LOCATION;
@@ -41,7 +42,9 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
   // this is the key object - the PolylinePoints
   // which generates every polyline between start and finish
   PolylinePoints polylinePoints = PolylinePoints();
-  String googleAPIKey = Platform.isAndroid?"AIzaSyAawPM19Hr5XU6mCGME2GybZDj2-K3mc20":"AIzaSyAyoBh_jZM1FgjKqCFO4RZuRs2TWM9ronk";
+  String googleAPIKey = Platform.isAndroid
+      ? 'AIzaSyAawPM19Hr5XU6mCGME2GybZDj2-K3mc20'
+      : 'AIzaSyAyoBh_jZM1FgjKqCFO4RZuRs2TWM9ronk';
   // for my custom icons
   BitmapDescriptor sourceIcon;
   BitmapDescriptor destinationIcon;
@@ -56,8 +59,8 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
     final BlockGiverMode _provider =
         Provider.of<BlockGiverMode>(context, listen: false);
     _provider.setListMain(widget.list);
-    DEST_LOCATION = LatLng(_provider.listmain['food']['latitude'],
-        _provider.listmain['food']['longitude']);
+    DEST_LOCATION = LatLng(double.parse('${_provider.listmain['food']['latitude']}'),
+        double.parse('${_provider.listmain['food']['longitude']}'));
     print('${widget.list}');
     _gpsService();
     getLocation(_provider);
@@ -104,8 +107,8 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
   updatepolyline(BlockGiverMode provider) async {
     if (status == true) {
       DEST_LOCATION = LatLng(
-          double.parse(provider.listmain['food']['latitude']),
-          double.parse(provider.listmain['food']['longitude']));
+          double.parse('${provider.listmain['food']['latitude']}'),
+          double.parse('${provider.listmain['food']['longitude']}'));
       PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
         googleAPIKey,
         PointLatLng(SOURCE_LOCATION.latitude, SOURCE_LOCATION.longitude),
@@ -211,6 +214,7 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
     setState(() {
       status = false;
     });
+    print('back');
     Navigator.of(context).pop();
     SharedPreferenceClass.addmode('G');
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -235,257 +239,273 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
     var height = MediaQuery.of(context).size.height;
     var width = MediaQuery.of(context).size.width;
 
-    return WillPopScope(
-      onWillPop: () => onbackpress(context),
-      child: Scaffold(
-          key: _provider.scaffoldKey,
-          floatingActionButton: Column(
-            children: [
-              SizedBox(
-                height: height / 1.5,
-              ),
-              FloatingActionButton(
-                onPressed: () {
-                  if (_provider.loading == false) {
-                  } else {
-                    Navigator.push(
-                        context,
-                        PageTransition(
-                            duration: Duration(milliseconds: 500),
-                            type: PageTransitionType.rightToLeft,
-                            child: ChangeNotifierProvider(
-                              create: (_) => BlockWebScocket(),
-                              child: WebScocket(
-                                id: _provider.listmain['receiver_id'],
-                                name: _provider.listmain['receiver_name'],
-                                idss: _provider.listmain['receiver_id'],
-                              ),
-                            )));
-                  }
-                },
-                backgroundColor: AppThemes.balckOpacityThemes,
-                child: Icon(
-                  Icons.message,
-                  color: Colors.white,
+    return SafeArea(
+      child: WillPopScope(
+        onWillPop: () => onbackpress(context),
+        child: Scaffold(
+            key: _provider.scaffoldKey,
+            floatingActionButton: Column(
+              children: [
+                SizedBox(
+                  height: height / 1.5,
                 ),
-              ),
-            ],
-            mainAxisAlignment: MainAxisAlignment.center,
-          ),
-          backgroundColor: Colors.white,
-          body: Container(
-            height: height,
-            width: width,
-            child: load == false
-                ? Center(child: CircularProgressIndicator())
-                : Stack(
-                    children: [
-                      Container(
-                        height: height,
-                        width: width,
-                        margin: EdgeInsets.only(bottom: height / 12),
-                        child: GoogleMap(
-                            myLocationEnabled: status,
-                            compassEnabled: status,
-                            tiltGesturesEnabled: status == true ? false : true,
-                            markers: _markers,
-                            polylines: _polylines,
-                            mapType: MapType.normal,
-                            initialCameraPosition: CameraPosition(
-                                zoom: CAMERA_ZOOM,
-                                bearing: CAMERA_BEARING,
-                                tilt: CAMERA_TILT,
-                                target: SOURCE_LOCATION),
-                            onMapCreated: onMapCreated),
-                      ),
-                      _provider.listofmainprogress['reached'] == false
-                          ? SizedBox()
-                          : Align(
-                              alignment: Alignment.bottomCenter,
-                              child: Container(
-                                height: height,
-                                width: width,
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      'Receiver is Arrived',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 25,
-                                          fontWeight: FontWeight.bold,
-                                          fontFamily: 'Comfortaa',
-                                          letterSpacing: 0.5),
-                                    ),
-                                    SizedBox(
-                                      height: height / 30,
-                                    ),
-                                    InkWell(
-                                      onTap: () {
-                                        if (_provider.deliverd ==
-                                            'Deliver food') {
-                                          ApiUtilsClass.deliveryAcceptedGiver(
-                                              context,
-                                              '${_provider.listmain['order_id']}');
-                                          _provider.setDelivered(
-                                              'Waiting for acceptance');
-                                        }
-                                        if (_provider.deliverd == 'Accepted') {
-                                          ApiUtilsClass.deliveryAcceptedReciver(
-                                              context,
-                                              '${_provider.listmain['order_id']}');
-                                          setState(() {
-                                            status = false;
-                                          });
-                                          getlistofProgress(_provider);
-                                          onbackpress(context);
-                                        }
-                                      },
-                                      child: Container(
-                                        height: height / 16,
-                                        width: width / 2,
-                                        child: Center(
-                                          child: Text(
-                                            '${_provider.deliverd}',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.bold,
-                                                fontFamily: 'Comfortaa',
-                                                letterSpacing: 0.5),
-                                          ),
-                                        ),
-                                        decoration: BoxDecoration(
-                                            color: delivered == 'Deliver food'
-                                                ? AppThemes.mainThemes
-                                                : delivered ==
-                                                        'Waiting for acceptance'
-                                                    ? AppThemes.mainThemes
-                                                        .withOpacity(0.3)
-                                                    : AppThemes.mainThemes,
-                                            borderRadius:
-                                                BorderRadius.circular(8)),
-                                      ),
-                                    )
-                                  ],
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
+                FloatingActionButton(
+                  onPressed: () {
+                    if (_provider.loading == false) {
+                    } else {
+                      Navigator.push(
+                          context,
+                          PageTransition(
+                              duration: Duration(milliseconds: 500),
+                              type: PageTransitionType.rightToLeft,
+                              child: ChangeNotifierProvider(
+                                create: (_) => BlockWebScocket(),
+                                child: WebScocket(
+                                  id: _provider.listmain['receiver_id'],
+                                  name: _provider.listmain['receiver_name'],
+                                  idss: _provider.listmain['receiver_id'],
                                 ),
-                                decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.5)),
-                              ),
-                            ),
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Container(
-                          height: height / 12,
+                              )));
+                    }
+                  },
+                  backgroundColor: AppThemes.balckOpacityThemes,
+                  child: Icon(
+                    Icons.message,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+              mainAxisAlignment: MainAxisAlignment.center,
+            ),
+            backgroundColor: Colors.white,
+            body: Container(
+              height: height,
+              width: width,
+              child: load == false
+                  ? Center(child: CircularProgressIndicator())
+                  : Stack(
+                      children: [
+                        Container(
+                          height: height,
                           width: width,
-                          child: Row(
-                            children: [
-                              _provider.listofmainprogress['accepted'] == true
-                                  ? _provider.listofmainprogress['reached'] ==
-                                          true
-                                      ? Text(
-                                          '     Please deliver food',
-                                          style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              fontFamily: 'Comfortaa',
-                                              letterSpacing: 0.5),
-                                        )
-                                      : Text(
-                                          '     Please wait for receiver',
-                                          style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              fontFamily: 'Comfortaa',
-                                              letterSpacing: 0.5),
-                                        )
-                                  : InkWell(
-                                      onTap: () {
-                                        ApiUtilsClass.ricevrexceptRequest(
-                                            id: '${_provider.listmain['order_id']}',
-                                            provider: _provider);
-                                        setState(() {
-                                          actionIndex = 2;
-                                        });
-                                      },
-                                      child: actionIndex <= 1
-                                          ? Text(
-                                              '     Accept Request',
+                          margin: EdgeInsets.only(bottom: height / 12),
+                          child: GoogleMap(
+                              myLocationEnabled: status,
+                              compassEnabled: status,
+                              tiltGesturesEnabled: status == true ? false : true,
+                              markers: _markers,
+                              polylines: lines,
+                              mapType: MapType.normal,
+                              initialCameraPosition: CameraPosition(
+                                  zoom: CAMERA_ZOOM,
+                                  bearing: CAMERA_BEARING,
+                                  tilt: CAMERA_TILT,
+                                  target: SOURCE_LOCATION),
+                              onMapCreated: onMapCreated),
+                        ),
+                        _provider.listofmainprogress['reached'] == false
+                            ? SizedBox()
+                            : Align(
+                                alignment: Alignment.bottomCenter,
+                                child: Container(
+                                  height: height,
+                                  width: width,
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        'Receiver is Arrived',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 25,
+                                            fontWeight: FontWeight.bold,
+                                            fontFamily: 'Comfortaa',
+                                            letterSpacing: 0.5),
+                                      ),
+                                      SizedBox(
+                                        height: height / 30,
+                                      ),
+                                      InkWell(
+                                        onTap: () {
+                                          if (_provider.deliverd ==
+                                              'Deliver food') {
+                                            ApiUtilsClass.deliveryAcceptedGiver(
+                                                context,
+                                                '${_provider.listmain['order_id']}');
+                                            _provider.setDelivered(
+                                                'Waiting for acceptance');
+                                          }
+                                          if (_provider.deliverd == 'Accepted') {
+                                            ApiUtilsClass.deliveryAcceptedReciver(
+                                                context,
+                                                '${_provider.listmain['order_id']}');
+                                            setState(() {
+                                              status = false;
+                                            });
+                                            getlistofProgress(_provider);
+                                            onbackpress(context);
+                                          }
+                                        },
+                                        child: Container(
+                                          height: height / 16,
+                                          width: width / 2,
+                                          child: Center(
+                                            child: Text(
+                                              '${_provider.deliverd}',
                                               style: TextStyle(
                                                   color: Colors.white,
-                                                  fontSize: 15,
+                                                  fontSize: 13,
                                                   fontWeight: FontWeight.bold,
                                                   fontFamily: 'Comfortaa',
                                                   letterSpacing: 0.5),
-                                            )
-                                          : Padding(
-                                              padding: EdgeInsets.only(
-                                                  left: width / 15),
-                                              child: CircularProgressIndicator(
-                                                backgroundColor: Colors.white,
-                                              ),
                                             ),
-                                    ),
-                              InkWell(
-                                onTap: () {
-                                  ApiUtilsClass.reciverCancel(context,
-                                      '${_provider.listmain['order_id']}');
-                                  setState(() {
-                                    status = false;
-                                  });
-                                  getlistofProgress(_provider);
-                                  onbackpress(context);
-                                },
-                                child: Text(
-                                  'Cancel    ',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'Comfortaa',
-                                      letterSpacing: 0.5),
+                                          ),
+                                          decoration: BoxDecoration(
+                                              color: delivered == 'Deliver food'
+                                                  ? AppThemes.mainThemes
+                                                  : delivered ==
+                                                          'Waiting for acceptance'
+                                                      ? AppThemes.mainThemes
+                                                          .withOpacity(0.3)
+                                                      : AppThemes.mainThemes,
+                                              borderRadius:
+                                                  BorderRadius.circular(8)),
+                                        ),
+                                      )
+                                    ],
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                  ),
+                                  decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.5)),
                                 ),
                               ),
-                            ],
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Align(
+                          alignment: Alignment.bottomCenter,
+                          child: Container(
+                            height: height / 12,
+                            width: width,
+                            child: Row(
+                              children: [
+                                _provider.listofmainprogress['accepted'] == true
+                                    ? _provider.listofmainprogress['reached'] ==
+                                            true
+                                        ? Text(
+                                            '     Please deliver food',
+                                            style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                fontFamily: 'Comfortaa',
+                                                letterSpacing: 0.5),
+                                          )
+                                        : Text(
+                                            '     Please wait for receiver',
+                                            style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                fontFamily: 'Comfortaa',
+                                                letterSpacing: 0.5),
+                                          )
+                                    : InkWell(
+                                        onTap: () {
+                                          ApiUtilsClass.ricevrexceptRequest(
+                                              id: '${_provider.listmain['order_id']}',
+                                              provider: _provider);
+                                          setState(() {
+                                            actionIndex = 2;
+                                          });
+                                        },
+                                        child: actionIndex <= 1
+                                            ? Text(
+                                                '     Accept Request',
+                                                style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontFamily: 'Comfortaa',
+                                                    letterSpacing: 0.5),
+                                              )
+                                            : Padding(
+                                                padding: EdgeInsets.only(
+                                                    left: width / 15),
+                                                child: CircularProgressIndicator(
+                                                  backgroundColor: Colors.white,
+                                                ),
+                                              ),
+                                      ),
+                                InkWell(
+                                  onTap: () {
+                                    ApiUtilsClass.reciverCancel(context,
+                                        '${_provider.listmain['order_id']}');
+                                    setState(() {
+                                      status = false;
+                                    });
+                                    getlistofProgress(_provider);
+                                    onbackpress(context);
+                                  },
+                                  child: Text(
+                                    'Cancel    ',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'Comfortaa',
+                                        letterSpacing: 0.5),
+                                  ),
+                                ),
+                              ],
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            ),
+                            decoration:
+                                BoxDecoration(color: AppThemes.mainThemes),
                           ),
-                          decoration:
-                              BoxDecoration(color: AppThemes.mainThemes),
                         ),
-                      ),
-                      Align(
-                        alignment: Alignment.topLeft,
-                        child: Padding(
-                          padding: EdgeInsets.only(
-                              left: width / 20, top: width / 20),
-                          child: InkWell(
-                            onTap: () {
-                              onbackpress(context);
-                            },
-                            child: Icon(
-                              Platform.isAndroid
-                                  ? Icons.arrow_back
-                                  : Icons.arrow_back_ios,
-                              color: Colors.black,
+                        Align(
+                          alignment: Alignment.topLeft,
+                          child: Padding(
+                            padding: EdgeInsets.all(
+                                width / 20
+                                ),
+                            child: InkWell(
+                              onTap: () {
+                                onbackpress(context);
+                              },
+                              child: Icon(
+                                Platform.isAndroid
+                                    ? Icons.arrow_back
+                                    : Icons.arrow_back_ios,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
-                        ),
-                      )
-                    ],
-                  ),
-          )),
+                        )
+                      ],
+                    ),
+            )),
+      ),
     );
   }
-
+  _getPolyline(){
+    lines.add(
+      Polyline(
+        points: [
+          LatLng(SOURCE_LOCATION.latitude, SOURCE_LOCATION.longitude),
+          LatLng(DEST_LOCATION.latitude, DEST_LOCATION.longitude),
+        ],
+        endCap: Cap.squareCap,
+        geodesic: false,
+        color: Colors.blue,
+        polylineId: PolylineId("line_one"),
+      ),
+    );
+  }
   void onMapCreated(GoogleMapController controller) {
     controller.setMapStyle(Utils.mapStyles);
     _controller.complete(controller);
     if (status == true) {
       setMapPins();
-      setPolylines();
+      _getPolyline();
     }
   }
 
@@ -502,34 +522,5 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
           position: DEST_LOCATION,
           icon: BitmapDescriptor.defaultMarker));
     });
-  }
-
-  setPolylines() async {
-    if (status == true) {
-      PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
-        googleAPIKey,
-        PointLatLng(SOURCE_LOCATION.latitude, SOURCE_LOCATION.longitude),
-        PointLatLng(DEST_LOCATION.latitude, DEST_LOCATION.longitude),
-      );
-      if (result.points.isNotEmpty) {
-        result.points.forEach((PointLatLng point) {
-          polylineCoordinates.add(LatLng(point.latitude, point.longitude));
-        });
-
-        setState(() {
-          // create a Polyline instance
-          // with an id, an RGB color and the list of LatLng pairs
-          Polyline polyline = Polyline(
-              polylineId: PolylineId("poly"),
-              color: Color.fromARGB(255, 40, 122, 198),
-              points: polylineCoordinates);
-
-          // add the constructed polyline as a set of points
-          // to the polyline set, which will eventually
-          // end up showing up on the map
-          _polylines.add(polyline);
-        });
-      }
-    }
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:SharingOut/Authentication/VerifyNumber.dart';
 import 'package:SharingOut/WebScocket.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -84,6 +85,8 @@ class ApiUtilsClass {
                 return status <= 500;
               }));
       var data = response.data;
+      print('data is = $data');
+      print('responce = ${response.statusCode}');
       if (response.statusCode == 200) {
         token = data['data']['access_token'];
         userId = data['data']['userid'];
@@ -119,6 +122,12 @@ class ApiUtilsClass {
         provider.setLoadiing(false);
         SnackBars.snackbar(
             c: Colors.red, key: provider.scaffoldKey, text: '${data['error']}');
+        Future.delayed(Duration(seconds: 2), () {
+          if (data['error'] == 'Phone is not verified' || data['error'] == 'Email is not verified') {
+            Navigator.push(provider.scaffoldKey.currentContext,
+                MaterialPageRoute(builder: (c) => VerifyNumber(wich: 'login',)));
+          }
+        });
       } else {
         provider.setLoadiing(false);
         SnackBars.snackbar(
@@ -231,6 +240,10 @@ class ApiUtilsClass {
                   builder: (c) => ChangePassword(
                         otp: otp,
                       )));
+        }
+        if (password == 'login') {
+          Navigator.push(scaffoldKey.currentContext,
+              MaterialPageRoute(builder: (c) => LoginPage()));
         } else {
           Navigator.push(scaffoldKey.currentContext,
               MaterialPageRoute(builder: (c) => SignUpSucsessPage()));
@@ -525,7 +538,6 @@ class ApiUtilsClass {
                 return status <= 500;
               }));
 
-
       if (response.statusCode == 204) {
         Navigator.of(context).pop();
         Navigator.pushAndRemoveUntil(
@@ -573,7 +585,6 @@ class ApiUtilsClass {
         Future.delayed(Duration(milliseconds: 200), () {
           provider.setAnim(true);
         });
-
       }
     } catch (e) {}
   }
@@ -647,7 +658,7 @@ class ApiUtilsClass {
 
   static Future addWebScocketSms(BlockWebScocket provider, String reci) async {
     try {
-       await Dio().post('$baseUrl/api/message/',
+      await Dio().post('$baseUrl/api/message/',
           data: {"recipient": reci, "body": provider.senderCon.text},
           options: Options(
               headers: {'Authorization': 'Bearer $token'},
@@ -683,6 +694,7 @@ class ApiUtilsClass {
 
   static Future getOrderDetailPage(
       BlockReciverOrderPageHome provider, String id) async {
+    print('id is  that = $id ');
     try {
       var response = await Dio().post('$baseUrl/api/order/$id/request',
           options: Options(
@@ -692,7 +704,8 @@ class ApiUtilsClass {
                 return status <= 500;
               }));
       var data = response.data;
-
+      print('first order Data is = s${response.statusCode}');
+      print('first order Data is = s$data');
       if (response.statusCode == 200) {
         provider.setListMain(data);
       } else {
@@ -716,7 +729,7 @@ class ApiUtilsClass {
                 return status <= 500;
               }));
       var data = response.data;
-
+      print('updated data is = $data');
       if (response.statusCode == 200) {
         if (data['cancelled'] == true) {
           provider.setstatus(false);
@@ -747,7 +760,7 @@ class ApiUtilsClass {
 
   static Future reciverLocationUpdate(LocationData latlng, String id) async {
     try {
-       await Dio().post('$baseUrl/api/order/$id/location',
+      await Dio().post('$baseUrl/api/order/$id/location',
           data: {'lat': '${latlng.latitude}', 'long': '${latlng.longitude}'},
           options: Options(
               headers: {'Authorization': 'Bearer $token'},
@@ -755,7 +768,6 @@ class ApiUtilsClass {
               validateStatus: (status) {
                 return status <= 500;
               }));
-
     } catch (e) {
       print('${e.toString()}');
     }
@@ -921,14 +933,13 @@ class ApiUtilsClass {
 
   static Future reciverReached(String id) async {
     try {
-       await Dio().post('$baseUrl/api/order/$id/reached',
+      await Dio().post('$baseUrl/api/order/$id/reached',
           options: Options(
               headers: {'Authorization': 'Bearer $token'},
               followRedirects: false,
               validateStatus: (status) {
                 return status <= 500;
               }));
-
     } catch (e) {
       print('${e.toString()}');
     }
@@ -943,7 +954,6 @@ class ApiUtilsClass {
               validateStatus: (status) {
                 return status <= 500;
               }));
-
 
       if (response.statusCode == 201) {}
     } catch (e) {
@@ -961,7 +971,6 @@ class ApiUtilsClass {
                 return status <= 500;
               }));
 
-
       if (response.statusCode == 201) {}
     } catch (e) {
       print('${e.toString()}');
@@ -977,7 +986,6 @@ class ApiUtilsClass {
               validateStatus: (status) {
                 return status <= 500;
               }));
-
 
       if (response.statusCode == 201) {}
     } catch (e) {
@@ -999,7 +1007,6 @@ class ApiUtilsClass {
               validateStatus: (status) {
                 return status <= 500;
               }));
-
 
       if (response.statusCode == 201) {}
     } catch (e) {
@@ -1063,7 +1070,6 @@ class ApiUtilsClass {
               validateStatus: (status) {
                 return status <= 500;
               }));
-
     } catch (e) {
       print('${e.toString()}');
     }
@@ -1078,7 +1084,6 @@ class ApiUtilsClass {
               validateStatus: (status) {
                 return status <= 500;
               }));
-
 
       if (response.statusCode == 201) {}
     } catch (e) {
@@ -1294,14 +1299,13 @@ class ApiUtilsClass {
 
   static Future addNoOfViewa(String id) async {
     try {
-       await Dio().post('$baseUrl/api/food/view/$id/',
+      await Dio().post('$baseUrl/api/food/view/$id/',
           options: Options(
               headers: {'Authorization': 'Bearer $token'},
               followRedirects: false,
               validateStatus: (status) {
                 return status <= 500;
               }));
-
     } catch (e) {
       print('${e.toString()}');
     }
