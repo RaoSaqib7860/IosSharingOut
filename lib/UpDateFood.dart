@@ -1,4 +1,4 @@
-import 'package:android_intent/android_intent.dart';
+//import 'package:android_intent/android_intent.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -102,12 +102,12 @@ class _UpDateFoodDataState extends State<UpDateFoodData> {
                   FlatButton(
                       child: Text('Ok'),
                       onPressed: () {
-                        final AndroidIntent intent = AndroidIntent(
+                       /* final AndroidIntent intent = AndroidIntent(
                             action:
                                 'android.settings.LOCATION_SOURCE_SETTINGS');
                         intent.launch();
                         Navigator.of(context, rootNavigator: true).pop();
-                        _gpsService();
+                        _gpsService();*/
                       })
                 ],
               );

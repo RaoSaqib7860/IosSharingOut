@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 import 'package:SharingOut/Authentication/VerifyNumber.dart';
 import 'package:SharingOut/WebScocket.dart';
@@ -731,7 +732,7 @@ class ApiUtilsClass {
       var data = response.data;
       print('updated data is = $data');
       if (response.statusCode == 200) {
-        if (data['cancelled'] == true) {
+        if (data['cancelled'] == true ) {
           provider.setstatus(false);
           SharedPreferenceClass.addmode('R');
           SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -758,7 +759,7 @@ class ApiUtilsClass {
     }
   }
 
-  static Future reciverLocationUpdate(LocationData latlng, String id) async {
+  static Future reciverLocationUpdate(LatLng latlng, String id) async {
     try {
       await Dio().post('$baseUrl/api/order/$id/location',
           data: {'lat': '${latlng.latitude}', 'long': '${latlng.longitude}'},
@@ -833,7 +834,7 @@ class ApiUtilsClass {
                 return status <= 500;
               }));
       var data = response.data;
-
+      log('data = $data');
       if (response.statusCode == 200) {
         provider.setSeachList(data);
         provider.setloading(true);

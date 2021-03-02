@@ -65,11 +65,11 @@ class _ActiveRequestReciverState extends State<ActiveRequestReciver> {
       body: Container(
         height: height,
         width: width,
-        child: _provider.loading == false
+        child: _provider.searchList.contains(1)
             ? Center(
                 child: CircularProgressIndicator(),
               )
-            : _provider.searchList.length == 0
+            : _provider.searchList.isEmpty
                 ? Center(
                     child: Text(
                       'No active request',

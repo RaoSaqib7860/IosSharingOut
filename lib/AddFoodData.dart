@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:android_intent/android_intent.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
@@ -82,12 +81,12 @@ class _AddFoodDataState extends State<AddFoodData> {
                   FlatButton(
                       child: Text('Ok'),
                       onPressed: () {
-                        final AndroidIntent intent = AndroidIntent(
+                        /*final AndroidIntent intent = AndroidIntent(
                             action:
                                 'android.settings.LOCATION_SOURCE_SETTINGS');
                         intent.launch();
                         Navigator.of(context, rootNavigator: true).pop();
-                        _gpsService();
+                        _gpsService();*/
                       })
                 ],
               );

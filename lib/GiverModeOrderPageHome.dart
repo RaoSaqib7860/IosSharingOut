@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
-import 'package:android_intent/android_intent.dart';
+
+//import 'package:android_intent/android_intent.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geolocator/geolocator.dart';
@@ -21,6 +23,7 @@ import 'package:SharingOut/provider/BlockHomePage.dart';
 class GiverModeOrderPageHome extends StatefulWidget {
   GiverModeOrderPageHome({Key key, this.list}) : super(key: key);
   final list;
+
   @override
   _GiverModeOrderPageHomeState createState() => _GiverModeOrderPageHomeState();
 }
@@ -33,19 +36,25 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
   LatLng SOURCE_LOCATION;
   LatLng DEST_LOCATION;
   Completer<GoogleMapController> _controller = Completer();
+
   // this set will hold my markers
   Set<Marker> _markers = {};
+
   // this will hold the generated polylines
   Set<Polyline> _polylines = {};
+
   // this will hold each polyline coordinate as Lat and Lng pairs
   List<LatLng> polylineCoordinates = [];
+
   // this is the key object - the PolylinePoints
   // which generates every polyline between start and finish
   PolylinePoints polylinePoints = PolylinePoints();
   String googleAPIKey = Platform.isAndroid
       ? 'AIzaSyAawPM19Hr5XU6mCGME2GybZDj2-K3mc20'
       : 'AIzaSyAyoBh_jZM1FgjKqCFO4RZuRs2TWM9ronk';
+
   // for my custom icons
+  Map<PolylineId, Polyline> polylines = {};
   BitmapDescriptor sourceIcon;
   BitmapDescriptor destinationIcon;
   bool load = false;
@@ -54,13 +63,16 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
   bool onOnetime = false;
   int actionIndex = 1;
   String delivered = 'Deliver food';
+
   @override
   void initState() {
     final BlockGiverMode _provider =
         Provider.of<BlockGiverMode>(context, listen: false);
+    log('data is ${widget.list}');
     _provider.setListMain(widget.list);
-    DEST_LOCATION = LatLng(double.parse('${_provider.listmain['food']['latitude']}'),
-        double.parse('${_provider.listmain['food']['longitude']}'));
+    DEST_LOCATION = LatLng(
+        double.parse('${_provider.listmain['giver_location']['lat']}'),
+        double.parse('${_provider.listmain['giver_location']['long']}'));
     print('${widget.list}');
     _gpsService();
     getLocation(_provider);
@@ -90,12 +102,13 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
                   FlatButton(
                       child: Text('Ok'),
                       onPressed: () {
-                        final AndroidIntent intent = AndroidIntent(
+                        Navigator.of(context).pop();
+                        /*final AndroidIntent intent = AndroidIntent(
                             action:
                                 'android.settings.LOCATION_SOURCE_SETTINGS');
                         intent.launch();
                         Navigator.of(context, rootNavigator: true).pop();
-                        _gpsService();
+                        _gpsService();*/
                       })
                 ],
               );
@@ -105,10 +118,14 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
   }
 
   updatepolyline(BlockGiverMode provider) async {
+    log('${provider.listmain['giver_location']['lat']}');
+    log('${provider.listmain['giver_location']['long']}');
+    log('${SOURCE_LOCATION.latitude}');
+    log('${SOURCE_LOCATION.longitude}');
     if (status == true) {
       DEST_LOCATION = LatLng(
-          double.parse('${provider.listmain['food']['latitude']}'),
-          double.parse('${provider.listmain['food']['longitude']}'));
+          double.parse('${provider.listmain['giver_location']['lat']}'),
+          double.parse('${provider.listmain['giver_location']['long']}'));
       PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
         googleAPIKey,
         PointLatLng(SOURCE_LOCATION.latitude, SOURCE_LOCATION.longitude),
@@ -118,6 +135,7 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
         if (polylineCoordinates != null) {
           polylineCoordinates.clear();
         }
+        log('points is = ${result.points}');
         result.points.forEach((PointLatLng point) {
           polylineCoordinates.add(LatLng(point.latitude, point.longitude));
         });
@@ -275,7 +293,7 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
                   ),
                 ),
               ],
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
             ),
             backgroundColor: Colors.white,
             body: Container(
@@ -292,9 +310,10 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
                           child: GoogleMap(
                               myLocationEnabled: status,
                               compassEnabled: status,
-                              tiltGesturesEnabled: status == true ? false : true,
+                              tiltGesturesEnabled:
+                                  status == true ? false : true,
                               markers: _markers,
-                              polylines: lines,
+                              polylines: Set<Polyline>.of(polylines.values),
                               mapType: MapType.normal,
                               initialCameraPosition: CameraPosition(
                                   zoom: CAMERA_ZOOM,
@@ -334,7 +353,8 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
                                             _provider.setDelivered(
                                                 'Waiting for acceptance');
                                           }
-                                          if (_provider.deliverd == 'Accepted') {
+                                          if (_provider.deliverd ==
+                                              'Accepted') {
                                             ApiUtilsClass.deliveryAcceptedReciver(
                                                 context,
                                                 '${_provider.listmain['order_id']}');
@@ -373,7 +393,8 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
                                       )
                                     ],
                                     mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
                                   ),
                                   decoration: BoxDecoration(
                                       color: Colors.black.withOpacity(0.5)),
@@ -429,7 +450,8 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
                                             : Padding(
                                                 padding: EdgeInsets.only(
                                                     left: width / 15),
-                                                child: CircularProgressIndicator(
+                                                child:
+                                                    CircularProgressIndicator(
                                                   backgroundColor: Colors.white,
                                                 ),
                                               ),
@@ -464,9 +486,7 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
                         Align(
                           alignment: Alignment.topLeft,
                           child: Padding(
-                            padding: EdgeInsets.all(
-                                width / 20
-                                ),
+                            padding: EdgeInsets.all(width / 20),
                             child: InkWell(
                               onTap: () {
                                 onbackpress(context);
@@ -486,26 +506,39 @@ class _GiverModeOrderPageHomeState extends State<GiverModeOrderPageHome> {
       ),
     );
   }
-  _getPolyline(){
-    lines.add(
-      Polyline(
-        points: [
-          LatLng(SOURCE_LOCATION.latitude, SOURCE_LOCATION.longitude),
-          LatLng(DEST_LOCATION.latitude, DEST_LOCATION.longitude),
-        ],
-        endCap: Cap.squareCap,
-        geodesic: false,
-        color: Colors.blue,
-        polylineId: PolylineId("line_one"),
-      ),
-    );
+
+  _addPolyLine() {
+    PolylineId id = PolylineId("poly");
+    Polyline polyline = Polyline(
+        polylineId: id, color: Colors.blue, points: polylineCoordinates);
+    polylines[id] = polyline;
+    setState(() {});
   }
+
+  void setPolylines() async {
+    PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
+        Platform.isAndroid
+            ? 'AIzaSyAawPM19Hr5XU6mCGME2GybZDj2-K3mc20'
+            : 'AIzaSyAyoBh_jZM1FgjKqCFO4RZuRs2TWM9ronk',
+        PointLatLng(SOURCE_LOCATION.latitude, SOURCE_LOCATION.longitude),
+        PointLatLng(DEST_LOCATION.latitude, DEST_LOCATION.longitude),
+        travelMode: TravelMode.driving,
+        wayPoints: [PolylineWayPoint(location: "")]);
+    print('points is = ${result.points}');
+    if (result.points.isNotEmpty) {
+      result.points.forEach((PointLatLng point) {
+        polylineCoordinates.add(LatLng(point.latitude, point.longitude));
+      });
+      _addPolyLine();
+    }
+  }
+
   void onMapCreated(GoogleMapController controller) {
     controller.setMapStyle(Utils.mapStyles);
     _controller.complete(controller);
     if (status == true) {
       setMapPins();
-      _getPolyline();
+      setPolylines();
     }
   }
 

@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
@@ -13,14 +14,16 @@ class PushNotificationServices {
     if (Platform.isIOS) {
       _fcm.configure(
         onMessage: (Map<String, dynamic> message) async {
-          print("onMessage: $message");
+          log("ios onMessage: $message");
           var data = message;
+          log('title = ${data['notification']['title']}');
+          log('body = ${data['notification']['body']}');
           InAppPushNotification.inAppnotifi(
-              title: '${data['aps']['alert']['title']}',
-              subTitle: '${data['aps']['alert']['body']}',
+              title: '${data['notification']['title']}',
+              subTitle: '${data['notification']['body']}',
               id: data['order_id'],
               context: context,
-              chat: data.containsKey('chat')?data['chat']:'false');
+              );
         },
         onLaunch: (Map<String, dynamic> message) async {
           print("onLaunch: $message");
@@ -45,6 +48,7 @@ class PushNotificationServices {
       _fcm.configure(onMessage: (
           Map<String, dynamic> message,
           ) async {
+        log("android onMessage: $message");
         var data = message;
         InAppPushNotification.inAppnotifi(
             title: '${data['notification']['title']}',

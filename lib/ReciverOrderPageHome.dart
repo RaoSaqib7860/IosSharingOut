@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
-import 'package:android_intent/android_intent.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart';
@@ -9,7 +9,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:location/location.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -60,13 +59,10 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
 
 // the user's initial location and current location
 // as it moves
-  LocationData currentLocation;
 
 // a reference to the destination location
-  LocationData destinationLocation;
 
 // wrapper around the location API
-  Location location;
   double pinPillPosition = -100;
   PinInformation currentlySelectedPin = PinInformation(
       pinPath: '',
@@ -89,7 +85,6 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
     final BlockReciverOrderPageHome _provider =
         Provider.of<BlockReciverOrderPageHome>(context, listen: false);
     _gpsService();
-    location = new Location();
     polylinePoints = PolylinePoints();
     locationUpdate(_provider);
     // set custom marker pins
@@ -99,7 +94,7 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
           getFoodDetail(_provider),
           timer = Timer.periodic(Duration(seconds: 5), (timer) {
             getlistofProgress(_provider);
-            if(_provider.timerstatus==false){
+            if (_provider.timerstatus == false) {
               _provider.settimerstatus(true);
             }
           })
@@ -111,10 +106,22 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
 
   locationUpdate(BlockReciverOrderPageHome provider) async {
     if (provider.status == true) {
-      location.onLocationChanged.listen((LocationData cLoc) {
-        currentLocation = cLoc;
-        updatePinOnMap();
-      });
+      Position position = await Geolocator.getLastKnownPosition();
+      if (position != null) {
+        setState(() {
+          SOURCE_LOCATION = LatLng(position.latitude, position.longitude);
+        });
+      } else {
+        Position position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high);
+        if (position != null) {
+          print('latitude is = ${position.latitude}');
+          print('longitude is = ${position.longitude}');
+          setState(() {
+            SOURCE_LOCATION = LatLng(position.latitude, position.longitude);
+          });
+        }
+      }
     }
   }
 
@@ -140,12 +147,13 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
                   FlatButton(
                       child: Text('Ok'),
                       onPressed: () {
-                        final AndroidIntent intent = AndroidIntent(
+                        Navigator.of(context).pop();
+                        /* final AndroidIntent intent = AndroidIntent(
                             action:
                                 'android.settings.LOCATION_SOURCE_SETTINGS');
                         intent.launch();
                         Navigator.of(context, rootNavigator: true).pop();
-                        _gpsService();
+                        _gpsService();*/
                       })
                 ],
               );
@@ -159,10 +167,9 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
       await ApiUtilsClass.updateOrderDetailPage(
           provider, '${provider.listmain['order_id']}');
       await ApiUtilsClass.reciverLocationUpdate(
-          currentLocation, '${provider.listmain['order_id']}');
+          SOURCE_LOCATION, '${provider.listmain['order_id']}');
       locationUpdate(provider);
     }
-
   }
 
   void setSourceAndDestinationIcons() async {
@@ -186,19 +193,12 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
   }
 
   Future setInitialLocation(BlockReciverOrderPageHome provider) async {
-
-    currentLocation = await location.getLocation();
-    if (provider.listmain != null) {
-      DEST_LOCATION = LatLng(provider.listmain['food']['latitude'],
-          provider.listmain['food']['longitude']);
+    if (widget.hselist == 'no') {
+      DEST_LOCATION = LatLng(widget.list['latitude'], widget.list['longitude']);
     } else {
-      DEST_LOCATION = LatLng(33.5969, 73.0528);
+      DEST_LOCATION = LatLng(
+          widget.list['food']['latitude'], widget.list['food']['longitude']);
     }
-
-    destinationLocation = LocationData.fromMap({
-      "latitude": DEST_LOCATION.latitude,
-      "longitude": DEST_LOCATION.longitude
-    });
   }
 
   bool selectRidetoConform = false;
@@ -216,9 +216,8 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
 
   Future onbackpress(BlockReciverOrderPageHome provider,
       Completer<GoogleMapController> controller) async {
-    if(provider.timerstatus==true){
-      timer.cancel();
-    }
+    provider.settimerstatus(true);
+    timer.cancel();
     getlistofProgress(provider);
     SharedPreferenceClass.addmode('R');
     Navigator.of(context).pop();
@@ -236,6 +235,12 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
           )),
       ModalRoute.withName('/'),
     );
+  }
+
+  @override
+  void dispose() {
+    timer.cancel();
+    super.dispose();
   }
 
   @override
@@ -283,7 +288,7 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
               ),
             ),
           ],
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
         ),
         key: _provider.scaffoldKey,
         backgroundColor: Colors.white,
@@ -362,11 +367,12 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
                                     scrollGesturesEnabled: true,
                                     zoomGesturesEnabled: true,
                                     markers: _markers,
-                                    polylines: lines,
+                                    polylines:
+                                        Set<Polyline>.of(polylines.values),
                                     mapType: MapType.normal,
                                     initialCameraPosition: CameraPosition(
-                                        target: LatLng(currentLocation.latitude,
-                                            currentLocation.longitude),
+                                        target: LatLng(SOURCE_LOCATION.latitude,
+                                            SOURCE_LOCATION.longitude),
                                         zoom: CAMERA_ZOOM,
                                         tilt: CAMERA_TILT,
                                         bearing: CAMERA_BEARING),
@@ -742,10 +748,9 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
     // get a LatLng for the source location
     // from the LocationData currentLocation object
     var pinPosition =
-        LatLng(currentLocation.latitude, currentLocation.longitude);
+        LatLng(SOURCE_LOCATION.latitude, SOURCE_LOCATION.longitude);
     // get a LatLng out of the LocationData object
-    var destPosition =
-        LatLng(destinationLocation.latitude, destinationLocation.longitude);
+    var destPosition = LatLng(DEST_LOCATION.latitude, DEST_LOCATION.longitude);
 
     sourcePinInfo = PinInformation(
         locationName: "Start Location",
@@ -785,53 +790,35 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
     ));
     // set the route lines on the map from source to destination
     // for more info follow this tutorial
-    _getPolyline();
+    setPolylines();
   }
 
-  _getPolyline(){
-    lines.add(
-      Polyline(
-        points: [
-          LatLng(currentLocation.latitude, currentLocation.longitude),
-          LatLng(destinationLocation.latitude, destinationLocation.longitude),
-        ],
-        endCap: Cap.squareCap,
-        geodesic: false,
-        color: Colors.blue,
-        polylineId: PolylineId("line_one"),
-      ),
-    );
+  _addPolyLine() {
+    PolylineId id = PolylineId("poly");
+    Polyline polyline = Polyline(
+        polylineId: id, color: Colors.blue, points: polylineCoordinates);
+    polylines[id] = polyline;
+    setState(() {});
   }
 
- /* void setPolylines() async {
+  void setPolylines() async {
     PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
-      googleAPIKey,
-      PointLatLng(currentLocation.latitude, currentLocation.longitude),
-      PointLatLng(destinationLocation.latitude, destinationLocation.longitude),
+        Platform.isAndroid
+            ? 'AIzaSyAawPM19Hr5XU6mCGME2GybZDj2-K3mc20'
+            : 'AIzaSyAyoBh_jZM1FgjKqCFO4RZuRs2TWM9ronk',
+        PointLatLng(SOURCE_LOCATION.latitude, SOURCE_LOCATION.longitude),
+        PointLatLng(DEST_LOCATION.latitude, DEST_LOCATION.longitude),
         travelMode: TravelMode.driving,
-        wayPoints: [PolylineWayPoint(location: "")]
-    );
+        wayPoints: [PolylineWayPoint(location: "")]);
+    log('points is = ${result.points}');
     if (result.points.isNotEmpty) {
       result.points.forEach((PointLatLng point) {
         polylineCoordinates.add(LatLng(point.latitude, point.longitude));
       });
-
-      setState(() {
-        _polylines.add(Polyline(
-            width: 2, // set the width of the polylines
-            polylineId: PolylineId("poly"),
-            color: Color.fromARGB(255, 40, 122, 198),
-            points: polylineCoordinates));
-      });
+      _addPolyLine();
     }
   }
-  _addPolyLine() {
-    PolylineId id = PolylineId("poly");
-    Polyline polyline = Polyline(
-        polylineId: id, color: Colors.red, points: polylineCoordinates);
-    polylines[id] = polyline;
-    setState(() {});
-  }*/
+
   void updatePinOnMap() async {
     // create a new CameraPosition instance
     // every time the location changes, so the camera
@@ -840,7 +827,7 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
       zoom: CAMERA_ZOOM,
       tilt: CAMERA_TILT,
       bearing: CAMERA_BEARING,
-      target: LatLng(currentLocation.latitude, currentLocation.longitude),
+      target: LatLng(SOURCE_LOCATION.latitude, SOURCE_LOCATION.longitude),
     );
     final GoogleMapController controller = await _controller.future;
     controller.animateCamera(CameraUpdate.newCameraPosition(cPosition));
@@ -849,7 +836,7 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
     setState(() {
       // updated position
       var pinPosition =
-          LatLng(currentLocation.latitude, currentLocation.longitude);
+          LatLng(SOURCE_LOCATION.latitude, SOURCE_LOCATION.longitude);
 
       sourcePinInfo.location = pinPosition;
 
@@ -867,9 +854,8 @@ class _ReciverOrderPageHomeState extends State<ReciverOrderPageHome>
           position: pinPosition, // updated position
           icon: sourceIcon));
     });
-    _getPolyline();
+    setPolylines();
   }
-
 }
 
 class Utils {
